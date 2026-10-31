@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NZ Interactive Mathematics Assessment Engine</title>
+  <style>
+    :root {
+      --primary: #0f4c81;
+      --primary-light: #e8f0fe;
+      --secondary: #107c41;
+      --accent: #d93025;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #202124;
+      --border: #dadce0;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
+    .container { max-width: 960px; margin: 0 auto; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; min-height: 90vh; display: flex; flex-direction: column; justify-content: space-between; }
+    
+    header { border-bottom: 2px solid var(--primary-light); padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .logo-badge { background: var(--primary); color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; }
+    h1 { font-size: 1.4rem; color: var(--primary); }
+    .timer-badge { background: #fff3cd; color: #856404; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+
+    /* Progress & Nav Bar */
+    .progress-bar-container { background: var(--border); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+    .progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s ease; }
+    .item-quick-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; max-height: 70px; overflow-y: auto; padding: 4px; background: #f1f3f4; border-radius: 8px; }
+    .nav-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: white; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .nav-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .nav-btn.answered { background: #e6f4ea; color: var(--secondary); border-color: var(--secondary); }
+    .nav-btn.flagged { border: 2px solid var(--accent); }
+
+    /* Question Container */
+    .question-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+    .q-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .q-number { font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+    .q-strand { background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .q-prompt { font-size: 1.1rem; margin-bottom: 20px; font-weight: 500; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .audio-btn { background: #f1f3f4; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+    .audio-btn:hover { background: #e8eaed; }
+
+    /* Interactive Visual Canvas */
+    .canvas-box { background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center; overflow-x: auto; position: relative; }
+    svg { max-width: 100%; height: auto; user-select: none; }
+    
+    /* Grid Manipulative Options */
+    .grid-shape-selectable { cursor: pointer; stroke: #333; stroke-width: 2; transition: all 0.2s; }
+    .grid-shape-selectable:hover { opacity: 0.85; filter: brightness(0.95); }
+    .grid-shape-selectable.selected { stroke: #d93025; stroke-width: 4; fill: #ffecb3 !important; }
+
+    /* Drag and Drop Basket */
+    .drop-zone { border: 3px dashed var(--primary); border-radius: 12px; background: rgba(15, 76, 129, 0.05); min-height: 120px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; padding: 12px; gap: 8px; transition: background 0.2s; }
+    .drop-zone.hovered { background: rgba(15, 76, 129, 0.15); }
+    .draggable-item { width: 36px; height: 36px; cursor: grab; transition: transform 0.1s; user-select: none; touch-action: none; }
+    .draggable-item:active { cursor: grabbing; transform: scale(1.15); }
+
+    /* Answer Options */
+    .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .option-btn { background: white; border: 2px solid var(--border); border-radius: 8px; padding: 14px 18px; font-size: 1rem; text-align: left; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+    .option-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+    .option-btn.selected { border-color: var(--primary); background: var(--primary-light); font-weight: 600; }
+    .option-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .option-btn.selected .option-radio { border-color: var(--primary); background: var(--primary); }
+    .option-btn.selected .option-radio::after { content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; }
+
+    /* Controls */
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .btn { padding: 10px 22px; border-radius: 8px; border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+    .btn-secondary { background: #f1f3f4; color: var(--text); }
+    .btn-secondary:hover { background: #e8eaed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #0b3c66; }
+    .btn-submit { background: var(--secondary); color: white; }
+    .btn-submit:hover { background: #0c6334; }
+    .btn-flag { background: transparent; color: #5f6368; border: 1px solid var(--border); }
+    .btn-flag.active { background: #fce8e6; color: var(--accent); border-color: var(--accent); }
+
+    /* Registration Screen */
+    .registration-box { max-width: 500px; margin: 40px auto; background: white; border: 1px solid var(--border); padding: 32px; border-radius: var(--radius); box-shadow: var(--shadow); }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+    .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+    /* Diagnostic Report */
+    .report-card { background: white; padding: 24px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
+    .metric-card { background: var(--bg); padding: 16px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+    .metric-value { font-size: 2rem; font-weight: 800; color: var(--primary); margin: 4px 0; }
+    .metric-label { font-size: 0.85rem; color: #5f6368; font-weight: 600; text-transform: uppercase; }
+    .strand-row { margin-bottom: 12px; }
+    .strand-info { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+    .strand-bar-bg { background: var(--border); height: 10px; border-radius: 5px; overflow: hidden; }
+    .strand-bar-fill { background: var(--secondary); height: 100%; width: 0%; transition: width 0.8s ease; }
+
+    /* Item Review Table */
+    .review-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+    .review-table th, .review-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .review-table th { background: #f1f3f4; font-weight: 600; }
+    .badge-correct { color: var(--secondary); font-weight: 700; }
+    .badge-incorrect { color: var(--accent); font-weight: 700; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-badge">NZ MATH</div>
+      <h1>Interactive Assessment Engine</h1>
+    </div>
+    <div id="header-meta" class="hidden" style="display:flex; gap:12px; align-items:center;">
+      <div class="timer-badge">⏱️ <span id="timer-display">00:00</span></div>
+      <div id="student-tag" style="font-weight:600; color: var(--primary);"></div>
+    </div>
+  </header>
+
+  <!-- SCREEN 1: REGISTRATION -->
+  <div id="registration-screen">
+    <div class="registration-box">
+      <h2 style="color:var(--primary); margin-bottom:8px;">Student Registration</h2>
+      <p style="color:#5f6368; font-size:0.9rem; margin-bottom:24px;">Complete your details to begin the assessment (Phases 2, 3 & 4).</p>
+      
+      <form id="reg-form">
+        <div class="form-group">
+          <label for="student-name">Full Student Name</label>
+          <input type="text" id="student-name" class="form-control" placeholder="e.g., Aroha Tīmene" required>
+        </div>
+        <div class="form-group">
+          <label for="year-level">Year Level</label>
+          <select id="year-level" class="form-control" required>
+            <option value="">Select Year Level...</option>
+            <option value="Year 4">Year 4 (Phase 2)</option>
+            <option value="Year 5">Year 5 (Phase 2/3)</option>
+            <option value="Year 6">Year 6 (Phase 3)</option>
+            <option value="Year 7">Year 7 (Phase 3)</option>
+            <option value="Year 8">Year 8 (Phase 3/4)</option>
+            <option value="Year 9">Year 9 (Phase 4)</option>
+            <option value="Year 10">Year 10 (Phase 4)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="session-code">Assessment Code / Room ID</label>
+          <input type="text" id="session-code" class="form-control" value="NZ-MATH-2026" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">Start Mathematics Assessment →</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: ASSESSMENT ENGINE -->
+  <div id="assessment-screen" class="hidden">
+    <div class="item-quick-nav" id="quick-nav-bar"></div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div class="question-card">
+      <div class="q-header">
+        <span class="q-number" id="q-number-label">Question 1 of 30</span>
+        <span class="q-strand" id="q-strand-label">Measurement & Geometry</span>
+      </div>
+
+      <div class="q-prompt">
+        <span id="q-prompt-text">Loading question prompt...</span>
+        <button class="audio-btn" id="btn-read-aloud" title="Read Aloud">🔊</button>
+      </div>
+
+      <!-- Visual Manipulative Canvas -->
+      <div class="canvas-box" id="canvas-container"></div>
+
+      <!-- Multiple Choice Options -->
+      <div class="options-grid" id="options-container"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btn-prev">← Previous</button>
+      <button class="btn btn-flag" id="btn-flag">🚩 Flag Question</button>
+      <button class="btn btn-primary" id="btn-next">Next Question →</button>
+      <button class="btn btn-submit hidden" id="btn-submit">Submit Assessment ✔</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: DIAGNOSTIC REPORT -->
+  <div id="report-screen" class="hidden">
+    <div class="report-card">
+      <h2 style="color:var(--primary); margin-bottom:4px;">Diagnostic Performance Report</h2>
+      <p style="color:#5f6368; font-size:0.9rem;">Calculated curriculum achievement and strand diagnostic insights.</p>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Overall Score</div>
+          <div class="metric-value" id="res-score-pct">0%</div>
+          <div style="font-size:0.85rem; color:#5f6368;" id="res-score-raw">0 / 30 correct</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Stanine Classification</div>
+          <div class="metric-value" id="res-stanine">Stanine 5</div>
+          <div style="font-size:0.85rem; color:#5f6368;" id="res-stanine-desc">Average Achievement</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Time Elapsed</div>
+          <div class="metric-value" id="res-time">00:00</div>
+          <div style="font-size:0.85rem; color:#5f6368;">Total Test Time</div>
+        </div>
+      </div>
+
+      <h3 style="margin: 20px 0 12px 0; color:var(--primary);">Curriculum Strand Breakdown</h3>
+      <div id="strand-breakdown-container"></div>
+
+      <h3 style="margin: 24px 0 12px 0; color:var(--primary);">Item-by-Item Diagnostic Review</h3>
+      <div style="overflow-x: auto;">
+        <table class="review-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Strand</th>
+              <th>Your Answer</th>
+              <th>Correct Answer</th>
+              <th>Status</th>
+              <th>Mathematical Insight & Solution</th>
+            </tr>
+          </thead>
+          <tbody id="review-table-body"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:24px; display:flex; gap:12px; justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Report</button>
+        <button class="btn btn-primary" id="btn-export-csv">📥 Download CSV Payload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * 30 Completely Original NZ Mathematics Curriculum Questions (Phases 2, 3 & 4)
+ * Featuring new characters, numbers, and situations.
+ */
+const backendScriptUrl = "https://script.google.com/macros/s/AKfycbx-upDbrHambxm3Ex1HcmKPdQ-Xs_9qzi_Ehe4jw3pKdE4_pGM5qG0L07NdaPEr4T89/exec";
+
+const questionsData = [
+  {
+    id: "Q01",
+    strand: "Measurement & Geometry",
+    phase: "Phase 2/3",
+    prompt: "Click on all of the grid shapes that have an area of exactly 15 squares.",
+    type: "grid_multi_select",
+    targetArea: 15,
+    svgData: {
+      gridWidth: 14, gridHeight: 8,
+      shapes: [
+        { id: "Shape A", area: 15, path: "M 1,1 H 6 V 4 H 1 Z", fill: "#3366cc" },
+        { id: "Shape B", area: 12, path: "M 8,1 H 12 V 4 H 8 Z", fill: "#dc3912" },
+        { id: "Shape C", area: 15, path: "M 1,5 H 4 V 6 H 6 V 7 H 1 Z", fill: "#ff9900" },
+        { id: "Shape D", area: 18, path: "M 8,5 H 14 V 8 H 8 Z", fill: "#109618" }
+      ]
+    },
+    options: ["Shape A and Shape C", "Shape A and Shape B", "Shape B and Shape D", "Shape C and Shape D", "Shape A only"],
+    correctAnswer: "Shape A and Shape C",
+    insight: "Shape A (5×3 = 15) and Shape C (3×1 + 2×1 + 5×2 = 15) both measure exactly 15 grid squares."
+  },
+  {
+    id: "Q02",
+    strand: "Number & Algebra",
+    phase: "Phase 2/3",
+    prompt: "Look at the number line below. What number is the vertical arrow pointing to?",
+    type: "svg_static",
+    svgType: "number_line_6",
+    options: ["6.02", "6.1", "6.2", "6.25", "6.4"],
+    correctAnswer: "6.2",
+    insight: "The arrow sits exactly halfway between 6.0 and 6.4. The midpoint calculation is (6.0 + 6.4) ÷ 2 = 6.2."
+  },
+  {
+    id: "Q03",
+    strand: "Number & Algebra",
+    phase: "Phase 2",
+    prompt: "Tane has 15 kūmara to share equally into 3 whānau baskets. How many kūmara go into 1 basket?",
+    type: "drag_and_drop_kumara",
+    totalItems: 15,
+    sharingGroups: 3,
+    options: ["3 kūmara", "4 kūmara", "5 kūmara", "6 kūmara", "12 kūmara"],
+    correctAnswer: "5 kūmara",
+    insight: "Sharing 15 items equally among 3 groups requires division: 15 ÷ 3 = 5 kūmara per basket."
+  },
+  {
+    id: "Q04",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3",
+    prompt: "Mia is laying square pavers around the border of a rectangular garden grid (7 columns by 4 rows). The border requires 18 pavers. How many MORE pavers are needed to cover the empty middle section?",
+    type: "svg_static",
+    svgType: "paver_border_7x4",
+    options: ["8", "10", "12", "18", "28"],
+    correctAnswer: "10",
+    insight: "The total grid area is 7 × 4 = 28 squares. The inner unpaved space has dimensions (7 - 2) × (4 - 2) = 5 × 2 = 10 pavers."
+  },
+  {
+    id: "Q05",
+    strand: "Statistics",
+    phase: "Phase 2/3",
+    prompt: "The bar chart below shows student votes for Matariki Cultural Workshops. How many MORE students chose Kapa Haka than Carving?",
+    type: "svg_static",
+    svgType: "bar_chart_matariki",
+    options: ["10", "12", "14", "16", "28"],
+    correctAnswer: "14",
+    insight: "Kapa Haka received 28 votes and Carving received 14 votes. Difference: 28 - 14 = 14 students."
+  },
+  {
+    id: "Q06",
+    strand: "Number & Algebra",
+    phase: "Phase 3",
+    prompt: "Sione earns $105.00 for 5 hours of math tutoring. At this same hourly rate, how much will Sione earn for 8½ hours?",
+    type: "numeric_choice",
+    options: ["$147.00", "$168.00", "$178.50", "$189.00", "$210.00"],
+    correctAnswer: "$178.50",
+    insight: "Hourly rate = $105 ÷ 5 = $21.00/hr. For 8.5 hours: 8.5 × $21.00 = $178.50."
+  },
+  {
+    id: "Q07",
+    strand: "Number & Algebra",
+    phase: "Phase 2/3",
+    prompt: "Nikau has $7.80 and Aroha has $4.20. How much money must Nikau give to Aroha so they both have the EXACT SAME amount?",
+    type: "numeric_choice",
+    options: ["$1.80", "$2.40", "$3.60", "$6.00", "90c"],
+    correctAnswer: "$1.80",
+    insight: "Total money = $7.80 + $4.20 = $12.00. Equal target = $6.00 each. Nikau gives $7.80 - $6.00 = $1.80."
+  },
+  {
+    id: "Q08",
+    strand: "Measurement & Geometry",
+    phase: "Phase 2/3",
+    prompt: "A harakeke weaving chisel is placed against a centimeter ruler starting at the 3.5 cm mark and ending at the 11.0 cm mark. How long is the harakeke chisel?",
+    type: "svg_static",
+    svgType: "offset_ruler_chisel",
+    options: ["3.5 cm", "7.5 cm", "8.0 cm", "11.0 cm", "14.5 cm"],
+    correctAnswer: "7.5 cm",
+    insight: "Subtract the starting offset from the end mark: 11.0 cm - 3.5 cm = 7.5 cm."
+  },
+  {
+    id: "Q09",
+    strand: "Number & Algebra",
+    phase: "Phase 2/3",
+    prompt: "What is the exact sum of 0.7 + 0.3?",
+    type: "numeric_choice",
+    options: ["0.10", "0.01", "1", "10", "None of these"],
+    correctAnswer: "1",
+    insight: "7 tenths + 3 tenths = 10 tenths = 1 whole."
+  },
+  {
+    id: "Q10",
+    strand: "Number & Algebra",
+    phase: "Phase 3",
+    prompt: "Wiremu knows that 12 × 12 = 144. How can he use this known fact to quickly work out 12 × 24?",
+    type: "numeric_choice",
+    options: ["144 × 2", "144 × 12", "144 + 12", "144 + 24", "144 ÷ 2"],
+    correctAnswer: "144 × 2",
+    insight: "Since 24 is double 12 (24 = 2 × 12), 12 × 24 = (12 × 12) × 2 = 144 × 2."
+  },
+  {
+    id: "Q11",
+    strand: "Number & Algebra",
+    phase: "Phase 3",
+    prompt: "A 100-grid has 35 squares shaded green. What fraction of the grid is shaded in SIMPLEST FORM?",
+    type: "numeric_choice",
+    options: ["35/100", "7/20", "3/10", "7/25", "1/3"],
+    correctAnswer: "7/20",
+    insight: "35/100 simplified by dividing numerator and denominator by 5 yields 7/20."
+  },
+  {
+    id: "Q12",
+    strand: "Number & Algebra",
+    phase: "Phase 3/4",
+    prompt: "Manaia shares 35 kaio shells between Kahu and Hemi in the ratio 3 : 2. How many shells does Kahu receive?",
+    type: "numeric_choice",
+    options: ["14", "15", "21", "24", "25"],
+    correctAnswer: "21",
+    insight: "Total ratio parts = 3 + 2 = 5 parts. Value per part = 35 ÷ 5 = 7 shells. Kahu gets 3 parts = 3 × 7 = 21."
+  },
+  {
+    id: "Q13",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3/4",
+    prompt: "Two angles lie on a straight line. If Angle A measures 124°, what is the measure of Angle B?",
+    type: "svg_static",
+    svgType: "supplementary_angle",
+    options: ["46°", "56°", "66°", "124°", "180°"],
+    correctAnswer: "56°",
+    insight: "Angles on a straight line add to 180°. Angle B = 180° - 124° = 56°."
+  },
+  {
+    id: "Q14",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3/4",
+    prompt: "Point P has coordinates (3, -4). If Point P is reflected across the x-axis, what are its new coordinates?",
+    type: "numeric_choice",
+    options: ["(-3, -4)", "(-3, 4)", "(3, 4)", "(4, -3)", "(-4, 3)"],
+    correctAnswer: "(3, 4)",
+    insight: "Reflecting over the x-axis keeps the x-coordinate identical and negates the y-coordinate: (3, -4) -> (3, 4)."
+  },
+  {
+    id: "Q15",
+    strand: "Number & Algebra",
+    phase: "Phase 3/4",
+    prompt: "Evaluate the algebraic expression 3x² - 5x + 2 when x = -2.",
+    type: "numeric_choice",
+    options: ["0", "12", "16", "24", "-8"],
+    correctAnswer: "24",
+    insight: "3(-2)² - 5(-2) + 2 = 3(4) + 10 + 2 = 12 + 10 + 2 = 24."
+  },
+  {
+    id: "Q16",
+    strand: "Statistics",
+    phase: "Phase 3/4",
+    prompt: "A cyclist travels 15 km in 30 mins, rests for 15 mins, then travels another 15 km in 45 mins. What is their average speed for the ENTIRE 90-minute journey?",
+    type: "numeric_choice",
+    options: ["15 km/h", "20 km/h", "22.5 km/h", "25 km/h", "30 km/h"],
+    correctAnswer: "20 km/h",
+    insight: "Total distance = 15 + 15 = 30 km. Total time = 90 mins = 1.5 hours. Average speed = 30 ÷ 1.5 = 20 km/h."
+  },
+  {
+    id: "Q17",
+    strand: "Number & Algebra",
+    phase: "Phase 4",
+    prompt: "The thickness of a high-precision metal layer is 0.000048 meters. Express this value in scientific notation.",
+    type: "numeric_choice",
+    options: ["4.8 × 10⁻⁵", "4.8 × 10⁻⁴", "48 × 10⁻⁶", "4.8 × 10⁵", "0.48 × 10⁻⁴"],
+    correctAnswer: "4.8 × 10⁻⁵",
+    insight: "Move the decimal point 5 places to the right: 4.8 × 10⁻⁵ m."
+  },
+  {
+    id: "Q18",
+    strand: "Measurement & Geometry",
+    phase: "Phase 4",
+    prompt: "A guy wire supporting a marae flagpole is attached 12 m up the pole and anchored to the ground 5 m from the base. What is the length of the wire?",
+    type: "numeric_choice",
+    options: ["13 m", "17 m", "119 m", "169 m", "7 m"],
+    correctAnswer: "13 m",
+    insight: "Using Pythagoras: c = √(12² + 5²) = √(144 + 25) = √169 = 13 m."
+  },
+  {
+    id: "Q19",
+    strand: "Measurement & Geometry",
+    phase: "Phase 4",
+    prompt: "A cylindrical marae rainwater tank has a radius of 3 m and a height of 4 m. What is its volume in terms of π?",
+    type: "numeric_choice",
+    options: ["12π m³", "24π m³", "36π m³", "48π m³", "144π m³"],
+    correctAnswer: "36π m³",
+    insight: "Cylinder volume V = π r² h = π × (3²) × 4 = π × 9 × 4 = 36π m³."
+  },
+  {
+    id: "Q20",
+    strand: "Statistics",
+    phase: "Phase 4",
+    prompt: "In a box plot dataset, Q1 = 14, Median = 22, and Q3 = 31. What is the Interquartile Range (IQR)?",
+    type: "numeric_choice",
+    options: ["8", "14", "17", "22", "37"],
+    correctAnswer: "17",
+    insight: "IQR = Q3 - Q1 = 31 - 14 = 17."
+  },
+  {
+    id: "Q21",
+    strand: "Statistics",
+    phase: "Phase 4",
+    prompt: "A bag contains 4 green, 5 red, and 3 yellow marbles (12 total). If two marbles are drawn WITHOUT replacement, what is the probability that BOTH are green?",
+    type: "numeric_choice",
+    options: ["1/11", "1/9", "4/33", "1/16", "5/12"],
+    correctAnswer: "1/11",
+    insight: "P(1st green) = 4/12 = 1/3. P(2nd green) = 3/11. Combined P = (4/12) × (3/11) = 12/132 = 1/11."
+  },
+  {
+    id: "Q22",
+    strand: "Number & Algebra",
+    phase: "Phase 4",
+    prompt: "Solve the linear equation for x: 4(2x - 3) = 3x + 13.",
+    type: "numeric_choice",
+    options: ["x = 3", "x = 5", "x = 7", "x = 8", "x = 25/11"],
+    correctAnswer: "x = 5",
+    insight: "Expand: 8x - 12 = 3x + 13. Subtract 3x: 5x - 12 = 13. Add 12: 5x = 25. Divide by 5: x = 5."
+  },
+  {
+    id: "Q23",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3/4",
+    prompt: "Triangle ABC has side lengths 6 cm, 8 cm, and 10 cm. Similar Triangle DEF has a perimeter of 48 cm. What is the length of the LONGEST side in Triangle DEF?",
+    type: "numeric_choice",
+    options: ["12 cm", "16 cm", "20 cm", "24 cm", "30 cm"],
+    correctAnswer: "20 cm",
+    insight: "Perimeter of ABC = 6 + 8 + 10 = 24 cm. Scale factor = 48 ÷ 24 = 2. Longest side in DEF = 10 × 2 = 20 cm."
+  },
+  {
+    id: "Q24",
+    strand: "Statistics",
+    phase: "Phase 3/4",
+    prompt: "The mean score of 4 math tests is 18. After sitting a 5th test, the new mean score increases to 20. What did the student score on the 5th test?",
+    type: "numeric_choice",
+    options: ["20", "22", "26", "28", "30"],
+    correctAnswer: "28",
+    insight: "Sum of 4 tests = 4 × 18 = 72. Sum of 5 tests = 5 × 20 = 100. 5th test score = 100 - 72 = 28."
+  },
+  {
+    id: "Q25",
+    strand: "Measurement & Geometry",
+    phase: "Phase 4",
+    prompt: "In a right-angled triangle, the hypotenuse is 10 cm and one acute angle is 30°. What is the length of the side OPPOSITE the 30° angle?",
+    type: "numeric_choice",
+    options: ["5 cm", "5√3 cm", "8.66 cm", "10 cm", "2.5 cm"],
+    correctAnswer: "5 cm",
+    insight: "Opposite = Hypotenuse × sin(30°) = 10 × 0.5 = 5 cm."
+  },
+  {
+    id: "Q26",
+    strand: "Number & Algebra",
+    phase: "Phase 4",
+    prompt: "Simplify the index expression: (2a³b²)³ ÷ (4a⁴b⁵).",
+    type: "numeric_choice",
+    options: ["2a⁵b", "2a⁵b²", "4a⁵b", "2a²b", "8a⁵b"],
+    correctAnswer: "2a⁵b",
+    insight: "Numerator = 8a⁹b⁶. Divide by 4a⁴b⁵: (8/4) × a⁽⁹⁻⁴⁾ × b⁽⁶⁻⁵⁾ = 2a⁵b."
+  },
+  {
+    id: "Q27",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3/4",
+    prompt: "What are the coordinates of point (2, 5) after a 90° CLOCKWISE rotation around the origin (0,0)?",
+    type: "numeric_choice",
+    options: ["(5, -2)", "(-5, 2)", "(-2, -5)", "(5, 2)", "(-2, 5)"],
+    correctAnswer: "(5, -2)",
+    insight: "A 90° clockwise rotation maps point (x, y) -> (y, -x). Thus (2, 5) becomes (5, -2)."
+  },
+  {
+    id: "Q28",
+    strand: "Statistics",
+    phase: "Phase 3",
+    prompt: "Tane flips 3 fair coins. What is the probability of getting EXACTLY 2 Heads?",
+    type: "numeric_choice",
+    options: ["1/8", "1/4", "3/8", "1/2", "5/8"],
+    correctAnswer: "3/8",
+    insight: "Total outcomes = 2³ = 8. Outcomes with exactly 2 heads: HHT, HTH, THH (3 outcomes). P = 3/8."
+  },
+  {
+    id: "Q29",
+    strand: "Number & Algebra",
+    phase: "Phase 4",
+    prompt: "Factorize the quadratic expression: x² - 7x + 12.",
+    type: "numeric_choice",
+    options: ["(x - 3)(x - 4)", "(x + 3)(x + 4)", "(x - 2)(x - 5)", "(x - 1)(x - 12)", "(x + 7)(x - 12)"],
+    correctAnswer: "(x - 3)(x - 4)",
+    insight: "We need two numbers that multiply to +12 and add to -7: (-3) × (-4) = 12 and (-3) + (-4) = -7."
+  },
+  {
+    id: "Q30",
+    strand: "Measurement & Geometry",
+    phase: "Phase 3/4",
+    prompt: "A train travels 135 km at a constant speed of 90 km/h. How long does the journey take?",
+    type: "numeric_choice",
+    options: ["1 hour 15 minutes", "1 hour 30 minutes", "1 hour 45 minutes", "2 hours", "45 minutes"],
+    correctAnswer: "1 hour 30 minutes",
+    insight: "Time = Distance ÷ Speed = 135 ÷ 90 = 1.5 hours = 1 hour 30 minutes."
+  }
+];
+
+// App State
+let state = {
+  studentName: "",
+  yearLevel: "",
+  sessionCode: "",
+  currentIndex: 0,
+  userAnswers: {}, // index -> string or array
+  flaggedItems: new Set(),
+  startTime: null,
+  timerInterval: null,
+  draggedKumaraCount: 0
+};
+
+// DOM References
+const screens = {
+  reg: document.getElementById('registration-screen'),
+  assess: document.getElementById('assessment-screen'),
+  report: document.getElementById('report-screen')
+};
+
+// Initialize App
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  state.studentName = document.getElementById('student-name').value.trim();
+  state.yearLevel = document.getElementById('year-level').value;
+  state.sessionCode = document.getElementById('session-code').value.trim();
+
+  screens.reg.classList.add('hidden');
+  screens.assess.classList.remove('hidden');
+  document.getElementById('header-meta').classList.remove('hidden');
+  document.getElementById('student-tag').textContent = `${state.studentName} (${state.yearLevel})`;
+
+  state.startTime = new Date();
+  startTimer();
+  renderQuickNav();
+  loadQuestion(0);
+});
+
+function startTimer() {
+  state.timerInterval = setInterval(() => {
+    const elapsedSec = Math.floor((new Date() - state.startTime) / 1000);
+    const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const s = String(elapsedSec % 60).padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function renderQuickNav() {
+  const container = document.getElementById('quick-nav-bar');
+  container.innerHTML = '';
+  questionsData.forEach((q, idx) => {
+    const btn = document.createElement('button');
+    btn.className = `nav-btn ${idx === 0 ? 'active' : ''}`;
+    btn.textContent = idx + 1;
+    btn.id = `nav-btn-${idx}`;
+    btn.onclick = () => loadQuestion(idx);
+    container.appendChild(btn);
+  });
+}
+
+function updateNavState() {
+  questionsData.forEach((_, idx) => {
+    const btn = document.getElementById(`nav-btn-${idx}`);
+    btn.className = 'nav-btn';
+    if (idx === state.currentIndex) btn.classList.add('active');
+    if (state.userAnswers[idx] !== undefined) btn.classList.add('answered');
+    if (state.flaggedItems.has(idx)) btn.classList.add('flagged');
+  });
+
+  // Progress Bar
+  const pct = ((Object.keys(state.userAnswers).length) / questionsData.length) * 100;
+  document.getElementById('progress-bar').style.width = `${pct}%`;
+
+  // Controls Visibility
+  document.getElementById('btn-prev').disabled = state.currentIndex === 0;
+  if (state.currentIndex === questionsData.length - 1) {
+    document.getElementById('btn-next').classList.add('hidden');
+    document.getElementById('btn-submit').classList.remove('hidden');
+  } else {
+    document.getElementById('btn-next').classList.remove('hidden');
+    document.getElementById('btn-submit').classList.add('hidden');
+  }
+
+  const isFlagged = state.flaggedItems.has(state.currentIndex);
+  document.getElementById('btn-flag').classList.toggle('active', isFlagged);
+}
+
+function loadQuestion(index) {
+  state.currentIndex = index;
+  const q = questionsData[index];
+
+  document.getElementById('q-number-label').textContent = `Question ${index + 1} of ${questionsData.length}`;
+  document.getElementById('q-strand-label').textContent = `${q.strand} (${q.phase})`;
+  document.getElementById('q-prompt-text').textContent = q.prompt;
+
+  // Render Visual Canvas
+  renderCanvas(q);
+
+  // Render Options
+  renderOptions(q);
+
+  updateNavState();
+}
+
+function renderCanvas(q) {
+  const container = document.getElementById('canvas-container');
+  container.innerHTML = '';
+
+  if (q.type === 'grid_multi_select') {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 450 260");
+    svg.setAttribute("width", "450");
+
+    // Grid lines
+    for (let x = 0; x <= 420; x += 30) {
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", x + 15); line.setAttribute("y1", 10);
+      line.setAttribute("x2", x + 15); line.setAttribute("y2", 250);
+      line.setAttribute("stroke", "#e0e0e0"); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+    }
+    for (let y = 0; y <= 240; y += 30) {
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", 15); line.setAttribute("y1", y + 10);
+      line.setAttribute("x2", 435); line.setAttribute("y2", y + 10);
+      line.setAttribute("stroke", "#e0e0e0"); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+    }
+
+    // Shapes
+    q.svgData.shapes.forEach(shape => {
+      const path = document.createElementNS(svgNS, "path");
+      path.setAttribute("d", shape.path.replace(/(\d+)/g, (m) => parseInt(m) * 30 + 15));
+      path.setAttribute("fill", shape.fill);
+      path.setAttribute("class", "grid-shape-selectable");
+      path.setAttribute("data-id", shape.id);
+      
+      const currentSelected = state.userAnswers[state.currentIndex] || [];
+      if (currentSelected.includes(shape.id)) {
+        path.classList.add("selected");
+      }
+
+      path.onclick = () => {
+        let sel = state.userAnswers[state.currentIndex] ? [...state.userAnswers[state.currentIndex]] : [];
+        if (sel.includes(shape.id)) {
+          sel = sel.filter(s => s !== shape.id);
+        } else {
+          sel.push(shape.id);
+        }
+        state.userAnswers[state.currentIndex] = sel;
+        renderCanvas(q);
+        updateNavState();
+      };
+      svg.appendChild(path);
+
+      // Label
+      const text = document.createElementNS(svgNS, "text");
+      const bbox = shape.id;
+      text.setAttribute("x", shape.id === "Shape A" ? 90 : shape.id === "Shape B" ? 315 : shape.id === "Shape C" ? 75 : 345);
+      text.setAttribute("y", shape.id === "Shape A" ? 85 : shape.id === "Shape B" ? 85 : shape.id === "Shape C" ? 200 : 200);
+      text.setAttribute("font-weight", "bold");
+      text.setAttribute("fill", "#fff");
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = shape.id;
+      svg.appendChild(text);
+    });
+
+    container.appendChild(svg);
+  } 
+  else if (q.type === 'drag_and_drop_kumara') {
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+        <div style="font-size:0.9rem; color:#5f6368;">Click or drag kūmara into the Whānau Basket:</div>
+        <div class="drop-zone" id="kumara-basket" style="width:280px; min-height:100px;">
+          <div style="font-weight:bold; color:var(--primary); width:100%; text-align:center;">🧺 Whānau Basket</div>
+        </div>
+        <div style="font-weight:600; color:var(--primary);">Box count: <span id="kumara-count">0</span> kūmara</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; max-width:320px; justify-content:center;" id="kumara-pool"></div>
+        <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.8rem;" id="btn-reset-kumara">Reset Kūmara</button>
+      </div>
+    `;
+
+    const pool = document.getElementById('kumara-pool');
+    const basket = document.getElementById('kumara-basket');
+
+    const updateBasketView = (count) => {
+      state.draggedKumaraCount = count;
+      document.getElementById('kumara-count').textContent = count;
+      // Auto-select corresponding option if available
+      const matchOpt = q.options.find(o => o.startsWith(String(count)));
+      if (matchOpt) {
+        state.userAnswers[state.currentIndex] = matchOpt;
+        updateNavState();
+        renderOptions(q);
+      }
+    };
+
+    let count = state.draggedKumaraCount || 0;
+
+    for (let i = 0; i < q.totalItems; i++) {
+      const item = document.createElement('div');
+      item.style.cssText = "width:32px; height:32px; background:#8d5524; border-radius:50%; display:inline-block; cursor:pointer; text-align:center; line-height:32px; font-size:14px;";
+      item.textContent = "🥔";
+      item.onclick = () => {
+        if (basket.contains(item)) {
+          pool.appendChild(item);
+          count--;
+        } else {
+          basket.appendChild(item);
+          count++;
+        }
+        updateBasketView(count);
+      };
+      pool.appendChild(item);
+    }
+
+    document.getElementById('btn-reset-kumara').onclick = () => {
+      count = 0;
+      pool.innerHTML = '';
+      container.querySelector('#kumara-basket').innerHTML = `<div style="font-weight:bold; color:var(--primary); width:100%; text-align:center;">🧺 Whānau Basket</div>`;
+      for (let i = 0; i < q.totalItems; i++) {
+        const item = document.createElement('div');
+        item.style.cssText = "width:32px; height:32px; background:#8d5524; border-radius:50%; display:inline-block; cursor:pointer; text-align:center; line-height:32px; font-size:14px;";
+        item.textContent = "🥔";
+        item.onclick = () => {
+          if (basket.contains(item)) {
+            pool.appendChild(item);
+            count--;
+          } else {
+            basket.appendChild(item);
+            count++;
+          }
+          updateBasketView(count);
+        };
+        pool.appendChild(item);
+      }
+      updateBasketView(0);
+    };
+  }
+  else if (q.type === 'svg_static') {
+    container.innerHTML = getStaticSVG(q.svgType);
+  }
+  else {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "block";
+}
+
+function getStaticSVG(type) {
+  if (type === 'number_line_6') {
+    return `
+      <svg viewBox="0 0 500 100" width="500">
+        <line x1="40" y1="50" x2="460" y2="50" stroke="#333" stroke-width="3" />
+        <line x1="60" y1="35" x2="60" y2="65" stroke="#333" stroke-width="3" />
+        <text x="60" y="85" font-size="18" font-weight="bold" text-anchor="middle">6.0</text>
+        <line x1="440" y1="35" x2="440" y2="65" stroke="#333" stroke-width="3" />
+        <text x="440" y="85" font-size="18" font-weight="bold" text-anchor="middle">6.4</text>
+        <!-- Arrow at 6.2 (Midpoint at x=250) -->
+        <line x1="250" y1="35" x2="250" y2="65" stroke="#d93025" stroke-width="3" />
+        <path d="M 250,20 L 242,35 L 258,35 Z" fill="#d93025" />
+      </svg>
+    `;
+  }
+  if (type === 'paver_border_7x4') {
+    return `
+      <svg viewBox="0 0 350 200" width="350">
+        <!-- 7x4 Grid -->
+        ${Array.from({length: 4}).map((_, r) => 
+          Array.from({length: 7}).map((_, c) => {
+            const isBorder = r === 0 || r === 3 || c === 0 || c === 6;
+            return `<rect x="${c*45 + 15}" y="${r*45 + 10}" width="40" height="40" rx="4" 
+                    fill="${isBorder ? '#e67e22' : '#ffffff'}" stroke="${isBorder ? '#d35400' : '#bdc3c7'}" stroke-width="2"/>`;
+          }).join('')
+        ).join('')}
+      </svg>
+    `;
+  }
+  if (type === 'bar_chart_matariki') {
+    return `
+      <svg viewBox="0 0 450 220" width="450">
+        <!-- Y Axis -->
+        <line x1="50" y1="20" x2="50" y2="170" stroke="#333" stroke-width="2"/>
+        <line x1="50" y1="170" x2="420" y2="170" stroke="#333" stroke-width="2"/>
+        <!-- Bars -->
+        <rect x="70" y="50" width="45" height="120" fill="#2980b9"/>
+        <text x="92" y="190" font-size="11" text-anchor="middle">Weaving (24)</text>
+
+        <rect x="140" y="100" width="45" height="70" fill="#e74c3c"/>
+        <text x="162" y="190" font-size="11" text-anchor="middle">Carving (14)</text>
+
+        <rect x="210" y="30" width="45" height="140" fill="#27ae60"/>
+        <text x="232" y="190" font-size="11" text-anchor="middle">Kapa Haka (28)</text>
+
+        <rect x="280" y="120" width="45" height="50" fill="#f39c12"/>
+        <text x="302" y="190" font-size="11" text-anchor="middle">Astronomy (10)</text>
+
+        <rect x="350" y="80" width="45" height="90" fill="#8e44ad"/>
+        <text x="372" y="190" font-size="11" text-anchor="middle">Cooking (18)</text>
+      </svg>
+    `;
+  }
+  if (type === 'offset_ruler_chisel') {
+    return `
+      <svg viewBox="0 0 500 120" width="500">
+        <!-- Ruler body -->
+        <rect x="20" y="50" width="460" height="50" fill="#ecf0f1" stroke="#7f8c8d" stroke-width="2"/>
+        <!-- Ruler marks -->
+        ${Array.from({length: 13}).map((_, i) => `
+          <line x1="${i*35 + 40}" y1="50" x2="${i*35 + 40}" y2="70" stroke="#2c3e50" stroke-width="2"/>
+          <text x="${i*35 + 40}" y="90" font-size="12" text-anchor="middle">${i}</text>
+        `).join('')}
+        <!-- Chisel -->
+        <rect x="162.5" y="15" width="262.5" height="25" rx="5" fill="#16a085" stroke="#117864" stroke-width="2"/>
+        <line x1="162.5" y1="40" x2="162.5" y2="50" stroke="#d93025" stroke-dasharray="3,3" stroke-width="2"/>
+        <line x1="425" y1="40" x2="425" y2="50" stroke="#d93025" stroke-dasharray="3,3" stroke-width="2"/>
+      </svg>
+    `;
+  }
+  if (type === 'supplementary_angle') {
+    return `
+      <svg viewBox="0 0 350 140" width="350">
+        <line x1="30" y1="110" x2="320" y2="110" stroke="#333" stroke-width="3"/>
+        <line x1="175" y1="110" x2="90" y2="30" stroke="#333" stroke-width="3"/>
+        <text x="110" y="90" font-size="16" font-weight="bold" fill="#2980b9">124°</text>
+        <text x="210" y="90" font-size="16" font-weight="bold" fill="#d93025">Angle B = ?</text>
+      </svg>
+    `;
+  }
+  return '';
+}
+
+function renderOptions(q) {
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+
+  if (q.type === 'grid_multi_select') {
+    // Render button options matching the grid combination
+    q.options.forEach(opt => {
+      const btn = document.createElement('div');
+      const isSelected = state.userAnswers[state.currentIndex] === opt;
+      btn.className = `option-btn ${isSelected ? 'selected' : ''}`;
+      btn.innerHTML = `<div class="option-radio"></div><span>${opt}</span>`;
+      btn.onclick = () => {
+        state.userAnswers[state.currentIndex] = opt;
+        updateNavState();
+        renderOptions(q);
+      };
+      container.appendChild(btn);
+    });
+    return;
+  }
+
+  q.options.forEach(opt => {
+    const btn = document.createElement('div');
+    const isSelected = state.userAnswers[state.currentIndex] === opt;
+    btn.className = `option-btn ${isSelected ? 'selected' : ''}`;
+    btn.innerHTML = `<div class="option-radio"></div><span>${opt}</span>`;
+    btn.onclick = () => {
+      state.userAnswers[state.currentIndex] = opt;
+      updateNavState();
+      renderOptions(q);
+    };
+    container.appendChild(btn);
+  });
+}
+
+// Navigation Listeners
+document.getElementById('btn-prev').onclick = () => {
+  if (state.currentIndex > 0) loadQuestion(state.currentIndex - 1);
+};
+document.getElementById('btn-next').onclick = () => {
+  if (state.currentIndex < questionsData.length - 1) loadQuestion(state.currentIndex + 1);
+};
+document.getElementById('btn-flag').onclick = () => {
+  if (state.flaggedItems.has(state.currentIndex)) {
+    state.flaggedItems.delete(state.currentIndex);
+  } else {
+    state.flaggedItems.add(state.currentIndex);
+  }
+  updateNavState();
+};
+
+// Speech Synthesis Read Aloud
+document.getElementById('btn-read-aloud').onclick = () => {
+  const q = questionsData[state.currentIndex];
+  const text = `${q.prompt}. Options are: ${q.options.join(', ')}`;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+};
+
+// Submission & Diagnostic Generator
+document.getElementById('btn-submit').onclick = () => {
+  if (confirm("Are you sure you want to submit your assessment?")) {
+    clearInterval(state.timerInterval);
+    generateReport();
+  }
+};
+
+function generateReport() {
+  screens.assess.classList.add('hidden');
+  screens.report.classList.remove('hidden');
+
+  let correctCount = 0;
+  const strandStats = {};
+
+  const reviewBody = document.getElementById('review-table-body');
+  reviewBody.innerHTML = '';
+
+  questionsData.forEach((q, idx) => {
+    const userAns = state.userAnswers[idx] || "Not Answered";
+    let isCorrect = false;
+
+    if (Array.isArray(userAns)) {
+      isCorrect = userAns.sort().join(',') === q.correctAnswer;
+    } else {
+      isCorrect = userAns === q.correctAnswer;
+    }
+
+    if (isCorrect) correctCount++;
+
+    // Strand tracking
+    if (!strandStats[q.strand]) strandStats[q.strand] = { total: 0, correct: 0 };
+    strandStats[q.strand].total++;
+    if (isCorrect) strandStats[q.strand].correct++;
+
+    // Table Row
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${q.id}</strong></td>
+      <td>${q.strand}</td>
+      <td class="${isCorrect ? 'badge-correct' : 'badge-incorrect'}">${Array.isArray(userAns) ? userAns.join(', ') : userAns}</td>
+      <td><strong>${q.correctAnswer}</strong></td>
+      <td>${isCorrect ? '✅ Correct' : '❌ Incorrect'}</td>
+      <td style="font-size:0.85rem; color:#333;">${q.insight}</td>
+    `;
+    reviewBody.appendChild(tr);
+  });
+
+  const pct = Math.round((correctCount / questionsData.length) * 100);
+  document.getElementById('res-score-pct').textContent = `${pct}%`;
+  document.getElementById('res-score-raw').textContent = `${correctCount} / ${questionsData.length} correct`;
+
+  // Calculate Stanine
+  let stanine = 1;
+  let stanineDesc = "Very Low Achievement";
+  if (pct >= 95) { stanine = 9; stanineDesc = "Very High / Outstanding"; }
+  else if (pct >= 85) { stanine = 8; stanineDesc = "High Achievement"; }
+  else if (pct >= 75) { stanine = 7; stanineDesc = "Above Average"; }
+  else if (pct >= 60) { stanine = 6; stanineDesc = "High Average"; }
+  else if (pct >= 45) { stanine = 5; stanineDesc = "Average Achievement"; }
+  else if (pct >= 30) { stanine = 4; stanineDesc = "Low Average"; }
+  else if (pct >= 20) { stanine = 3; stanineDesc = "Below Average"; }
+  else if (pct >= 10) { stanine = 2; stanineDesc = "Low Achievement"; }
+
+  document.getElementById('res-stanine').textContent = `Stanine ${stanine}`;
+  document.getElementById('res-stanine-desc').textContent = stanineDesc;
+  document.getElementById('res-time').textContent = document.getElementById('timer-display').textContent;
+
+  // Render Strand Breakdown
+  const strandContainer = document.getElementById('strand-breakdown-container');
+  strandContainer.innerHTML = '';
+  Object.keys(strandStats).forEach(s => {
+    const data = strandStats[s];
+    const sPct = Math.round((data.correct / data.total) * 100);
+    const div = document.createElement('div');
+    div.className = 'strand-row';
+    div.innerHTML = `
+      <div class="strand-info"><span>${s}</span><span>${data.correct}/${data.total} (${sPct}%)</span></div>
+      <div class="strand-bar-bg"><div class="strand-bar-fill" style="width: ${sPct}%"></div></div>
+    `;
+    strandContainer.appendChild(div);
+  });
+
+  // Post Data to Google Apps Script Endpoint
+  postToGoogleBackend(pct, correctCount);
+}
+
+function postToGoogleBackend(pct, correctCount) {
+  const payload = {
+    studentName: state.studentName,
+    yearLevel: state.yearLevel,
+    sessionCode: state.sessionCode,
+    scorePct: pct,
+    correctCount: correctCount,
+    totalQuestions: questionsData.length,
+    items: questionsData.map((q, idx) => ({
+      questionId: q.id,
+      strand: q.strand,
+      selectedAnswer: state.userAnswers[idx] || "Not Answered",
+      correctAnswer: q.correctAnswer,
+      isCorrect: (state.userAnswers[idx] === q.correctAnswer),
+      diagnosticFeedback: q.insight
+    }))
+  };
+
+  fetch(backendScriptUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).then(() => {
+    console.log("Submitted payload asynchronously to Google Apps Script.");
+  }).catch(err => {
+    console.error("Backend submission error:", err);
+  });
+}
+
+// Download CSV Handler
+document.getElementById('btn-export-csv').onclick = () => {
+  let csv = "Timestamp,Student Name,Year Level,Question ID,Strand,Selected Answer,Correct Answer,Is Correct,Score (%),Diagnostic Feedback\n";
+  const now = new Date().toISOString();
+  const pct = Math.round((Object.keys(state.userAnswers).filter(idx => state.userAnswers[idx] === questionsData[idx].correctAnswer).length / questionsData.length) * 100);
+
+  questionsData.forEach((q, idx) => {
+    const userAns = state.userAnswers[idx] || "Not Answered";
+    const isCorrect = userAns === q.correctAnswer;
+    csv += `"${now}","${state.studentName}","${state.yearLevel}","${q.id}","${q.strand}","${userAns}","${q.correctAnswer}","${isCorrect}","${pct}%","${q.insight.replace(/"/g, '""')}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NZ_Math_Assessment_${state.studentName.replace(/\s+/g, '_')}.csv`;
+  a.click();
+};
+</script>
+</body>
+</html>
